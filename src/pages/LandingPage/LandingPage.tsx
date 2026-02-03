@@ -1,5 +1,7 @@
 import { useState, useCallback } from 'react'
 import { Upload, Loader2, CheckCircle2, XCircle } from 'lucide-react'
+import logoImg from "../../assets/images-removebg-preview.png"
+import topLeftImg from "../../assets/hs-logo.png"
 
 interface AnalysisResult {
   area?: number
@@ -128,7 +130,7 @@ function LandingPage() {
     className="flex items-center gap-3"
   >
     <img
-      src="/public/hs-logo.png"
+      src={topLeftImg}
       alt="Hassan Allam Holding"
       className="h-30 w-auto object-contain sm:h-10
         md:h-12
@@ -148,7 +150,7 @@ function LandingPage() {
 
               <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/30 rotate-3 hover:rotate-6 transition-transform duration-300">
                 <a href="https://thinkstudio.ai/ " target="_blank" rel="noopener noreferrer">
-                <img src="/public/images-removebg-preview.png" className="w-16 h-16 text-white" alt="HAH Logo" />
+                <img src={logoImg} className="w-16 h-16 text-white" alt="HAH Logo" />
                 </a>
               </div>
             </div>
