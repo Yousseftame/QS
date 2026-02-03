@@ -191,7 +191,7 @@ function LandingPage() {
             </div>
 
             {/* Features */}
-            <div className="flex flex-wrap justify-center gap-6 pt-4 animate-fade-in-delay">
+            {/* <div className="flex flex-wrap justify-center gap-6 pt-4 animate-fade-in-delay">
               {['AI-Powered Analysis', 'Instant Results', 'DWG Compatible'].map((feature, idx) => (
                 <div 
                   key={idx}
@@ -202,7 +202,7 @@ function LandingPage() {
                   <span className="text-sm font-medium text-slate-700">{feature}</span>
                 </div>
               ))}
-            </div>
+            </div> */}
           </div>
         </div>
       </section>
