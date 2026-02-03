@@ -117,6 +117,27 @@ function LandingPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       {/* Hero Section */}
       <section className="relative overflow-hidden">
+
+
+        {/* Top Left Logo */}
+<div className="absolute md:top-6 md:left-16 z-50  sm:top-6 sm:left-6 ">
+  <a
+    href="https://www.hassanallam.com/"
+    target="_blank"
+    rel="noopener noreferrer"
+    className="flex items-center gap-3"
+  >
+    <img
+      src="/public/hs-logo.png"
+      alt="Hassan Allam Holding"
+      className="h-30 w-auto object-contain sm:h-10
+        md:h-12
+        lg:h-30
+        "
+    />
+  </a>
+</div>
+
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.1),transparent_50%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_60%,rgba(99,102,241,0.08),transparent_50%)]" />
         
@@ -124,8 +145,11 @@ function LandingPage() {
           <div className="text-center space-y-8">
             {/* Logo */}
             <div className="flex justify-center items-center gap-3 animate-fade-in">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/30 rotate-3 hover:rotate-6 transition-transform duration-300">
-                <FileText className="w-8 h-8 text-white" strokeWidth={2.5} />
+
+              <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/30 rotate-3 hover:rotate-6 transition-transform duration-300">
+                <a href="https://thinkstudio.ai/ " target="_blank" rel="noopener noreferrer">
+                <img src="/public/images-removebg-preview.png" className="w-16 h-16 text-white" alt="HAH Logo" />
+                </a>
               </div>
             </div>
 
@@ -147,7 +171,7 @@ function LandingPage() {
             </div>
 
             {/* Features */}
-            <div className="flex flex-wrap justify-center gap-6 pt-4 animate-fade-in-delay">
+            {/* <div className="flex flex-wrap justify-center gap-6 pt-4 animate-fade-in-delay">
               {['AI-Powered Analysis', 'Instant Results', 'DWG Compatible'].map((feature, idx) => (
                 <div 
                   key={idx}
@@ -158,7 +182,7 @@ function LandingPage() {
                   <span className="text-sm font-medium text-slate-700">{feature}</span>
                 </div>
               ))}
-            </div>
+            </div> */}
           </div>
         </div>
       </section>
