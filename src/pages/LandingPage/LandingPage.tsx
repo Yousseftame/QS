@@ -1,18 +1,34 @@
 import { useState, useCallback } from 'react'
-import { Upload, Loader2, CheckCircle2, XCircle } from 'lucide-react'
+import { Upload, FileText, Loader2, CheckCircle2, XCircle } from 'lucide-react'
 import logoImg from "../../assets/images-removebg-preview.png"
 import topLeftImg from "../../assets/hs-logo.png"
 
+interface Pipe {
+  diameter: number
+  length: number
+}
+
+interface Elbow {
+  diameter: number
+  angle?: number
+}
+
 interface AnalysisResult {
-  area?: number
-  length?: number
-  quantities?: {
-    walls?: number
-    doors?: number
-    windows?: number
-    columns?: number
+  metadata: {
+    filename: string
+    total_straight_length: number
+    total_arc_length: number
   }
-  fileName?: string
+  pipes: Pipe[]
+  fittings: {
+    elbows: Elbow[]
+    tees?: any[]
+    reducers?: any[]
+  }
+  // Additional computed fields for display
+  totalPipes?: number
+  totalElbows?: number
+  totalFittings?: number
 }
 
 function LandingPage() {
@@ -76,34 +92,38 @@ function LandingPage() {
     setError(null)
 
     try {
-      // Simulate API call - replace with actual API endpoint
       const formData = new FormData()
       formData.append('file', file)
 
-      // TODO: Replace with your actual API endpoint
-      // const response = await fetch('YOUR_API_ENDPOINT/analyze', {
-      //   method: 'POST',
-      //   body: formData,
-      // })
-      // const data = await response.json()
-      // setResult(data)
-
-      // Simulated delay and response
-      await new Promise(resolve => setTimeout(resolve, 2500))
-      
-      setResult({
-        fileName: file.name,
-        area: 1250.75,
-        length: 485.30,
-        quantities: {
-          walls: 24,
-          doors: 8,
-          windows: 12,
-          columns: 6
-        }
+      // Real API call
+      const response = await fetch('http://54.159.23.205:8001/extract', {
+        method: 'POST',
+        body: formData,
       })
+
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`)
+      }
+
+      const data = await response.json()
+      
+      // Process the API response
+      const processedResult: AnalysisResult = {
+        metadata: data.metadata,
+        pipes: data.pipes || [],
+        fittings: data.fittings || { elbows: [] },
+        // Compute totals for display
+        totalPipes: data.pipes?.length || 0,
+        totalElbows: data.fittings?.elbows?.length || 0,
+        totalFittings: (data.fittings?.elbows?.length || 0) + 
+                       (data.fittings?.tees?.length || 0) + 
+                       (data.fittings?.reducers?.length || 0)
+      }
+      
+      setResult(processedResult)
     } catch (err) {
-      setError('Failed to analyze file. Please try again.')
+      console.error('Analysis error:', err)
+      setError(err instanceof Error ? err.message : 'Failed to analyze file. Please try again.')
     } finally {
       setIsAnalyzing(false)
     }
@@ -120,8 +140,7 @@ function LandingPage() {
       {/* Hero Section */}
       <section className="relative overflow-hidden">
 
-
-        {/* Top Left Logo */}
+             {/* Top Left Logo */}
 <div className="absolute md:top-6 md:left-16 z-50  sm:top-6 sm:left-6 ">
   <a
     href="https://www.hassanallam.com/"
@@ -139,7 +158,6 @@ function LandingPage() {
     />
   </a>
 </div>
-
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.1),transparent_50%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_60%,rgba(99,102,241,0.08),transparent_50%)]" />
         
@@ -147,10 +165,10 @@ function LandingPage() {
           <div className="text-center space-y-8">
             {/* Logo */}
             <div className="flex justify-center items-center gap-3 animate-fade-in">
-
+            
               <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/30 rotate-3 hover:rotate-6 transition-transform duration-300">
-                <a href="https://thinkstudio.ai/ " target="_blank" rel="noopener noreferrer">
-                <img src={logoImg} className="w-16 h-16 text-white" alt="HAH Logo" />
+                <a href="https://thinkstudio.ai/" target="_blank" rel="noopener noreferrer">
+                <img src={logoImg} className="w-16 h-16 text-white" />
                 </a>
               </div>
             </div>
@@ -173,7 +191,7 @@ function LandingPage() {
             </div>
 
             {/* Features */}
-            {/* <div className="flex flex-wrap justify-center gap-6 pt-4 animate-fade-in-delay">
+            <div className="flex flex-wrap justify-center gap-6 pt-4 animate-fade-in-delay">
               {['AI-Powered Analysis', 'Instant Results', 'DWG Compatible'].map((feature, idx) => (
                 <div 
                   key={idx}
@@ -184,7 +202,7 @@ function LandingPage() {
                   <span className="text-sm font-medium text-slate-700">{feature}</span>
                 </div>
               ))}
-            </div> */}
+            </div>
           </div>
         </div>
       </section>
@@ -288,7 +306,7 @@ function LandingPage() {
               <div className="flex items-center justify-between pb-6 border-b border-slate-200">
                 <div>
                   <h2 className="text-2xl font-bold text-slate-800">Analysis Complete</h2>
-                  <p className="text-sm text-slate-500 mt-1">{result.fileName}</p>
+                  <p className="text-sm text-slate-500 mt-1">{result.metadata.filename}</p>
                 </div>
                 <button
                   onClick={resetUpload}
@@ -303,16 +321,13 @@ function LandingPage() {
                 <div className="group p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-100 hover:shadow-lg transition-all duration-300">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-blue-700 mb-1">Total Area</p>
-                      <p className="text-3xl font-bold text-blue-900">{result.area?.toFixed(2)}</p>
-                      <p className="text-sm text-blue-600 mt-1">m²</p>
+                      <p className="text-sm font-medium text-blue-700 mb-1">Total Straight Length</p>
+                      <p className="text-3xl font-bold text-blue-900">{result.metadata.total_straight_length.toFixed(2)}</p>
+                      <p className="text-sm text-blue-600 mt-1">units</p>
                     </div>
                     <div className="w-14 h-14 bg-blue-600/10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
                       <svg className="w-7 h-7 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
                       </svg>
                     </div>
                   </div>
@@ -321,50 +336,124 @@ function LandingPage() {
                 <div className="group p-6 bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl border border-purple-100 hover:shadow-lg transition-all duration-300">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-purple-700 mb-1">Total Length</p>
-                      <p className="text-3xl font-bold text-purple-900">{result.length?.toFixed(2)}</p>
-                      <p className="text-sm text-purple-600 mt-1">m</p>
+                      <p className="text-sm font-medium text-purple-700 mb-1">Total Arc Length</p>
+                      <p className="text-3xl font-bold text-purple-900">{result.metadata.total_arc_length.toFixed(2)}</p>
+                      <p className="text-sm text-purple-600 mt-1">units</p>
                     </div>
                     <div className="w-14 h-14 bg-purple-600/10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
                       <svg className="w-7 h-7 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                       </svg>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Quantities Grid */}
+              {/* Component Counts */}
               <div>
-                <h3 className="text-lg font-semibold text-slate-800 mb-4">Component Quantities</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <h3 className="text-lg font-semibold text-slate-800 mb-4">Component Summary</h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {[
-                    { label: 'Walls', value: result.quantities?.walls, color: 'emerald' },
-                    { label: 'Doors', value: result.quantities?.doors, color: 'amber' },
-                    { label: 'Windows', value: result.quantities?.windows, color: 'cyan' },
-                    { label: 'Columns', value: result.quantities?.columns, color: 'rose' }
+                    { label: 'Total Pipes', value: result.totalPipes, color: 'emerald', icon: '|' },
+                    { label: 'Elbows', value: result.totalElbows, color: 'amber', icon: '⌐' },
+                    { label: 'Total Fittings', value: result.totalFittings, color: 'cyan', icon: '⊢' }
                   ].map((item, idx) => (
                     <div 
                       key={idx}
-                      className={`
-                        p-5 bg-${item.color}-50 rounded-xl border border-${item.color}-100
-                        hover:shadow-md transition-all duration-300 hover:-translate-y-1
-                      `}
-                      style={{
-                        animationDelay: `${idx * 50}ms`
-                      }}
+                      className="p-5 bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl border border-slate-200 hover:shadow-md transition-all duration-300 hover:-translate-y-1"
+                      style={{ animationDelay: `${idx * 50}ms` }}
                     >
-                      <p className={`text-xs font-medium text-${item.color}-700 mb-2`}>{item.label}</p>
-                      <p className={`text-2xl font-bold text-${item.color}-900`}>{item.value}</p>
+                      <p className="text-xs font-medium text-slate-600 mb-2">{item.label}</p>
+                      <p className="text-3xl font-bold text-slate-900">{item.value}</p>
                     </div>
                   ))}
                 </div>
               </div>
 
+              {/* Detailed Pipes List */}
+              {result.pipes.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4">Pipe Details</h3>
+                  <div className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
+                    <div className="max-h-64 overflow-y-auto">
+                      <table className="w-full">
+                        <thead className="bg-slate-100 sticky top-0">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">#</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Diameter</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Length</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200">
+                          {result.pipes.slice(0, 10).map((pipe, idx) => (
+                            <tr key={idx} className="hover:bg-white transition-colors">
+                              <td className="px-4 py-3 text-sm text-slate-600">{idx + 1}</td>
+                              <td className="px-4 py-3 text-sm font-medium text-slate-900">{pipe.diameter}</td>
+                              <td className="px-4 py-3 text-sm text-slate-700">{pipe.length.toFixed(4)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {result.pipes.length > 10 && (
+                      <div className="px-4 py-3 bg-slate-100 text-center text-sm text-slate-600">
+                        Showing 10 of {result.pipes.length} pipes
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Detailed Elbows List */}
+              {result.fittings.elbows.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4">Elbow Fittings</h3>
+                  <div className="bg-amber-50 rounded-xl border border-amber-200 overflow-hidden">
+                    <div className="max-h-64 overflow-y-auto">
+                      <table className="w-full">
+                        <thead className="bg-amber-100 sticky top-0">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-amber-900 uppercase">#</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-amber-900 uppercase">Diameter</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-amber-900 uppercase">Angle</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-amber-200">
+                          {result.fittings.elbows.slice(0, 10).map((elbow, idx) => (
+                            <tr key={idx} className="hover:bg-white transition-colors">
+                              <td className="px-4 py-3 text-sm text-amber-700">{idx + 1}</td>
+                              <td className="px-4 py-3 text-sm font-medium text-amber-900">{elbow.diameter}</td>
+                              <td className="px-4 py-3 text-sm text-amber-700">{elbow.angle || 'N/A'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {result.fittings.elbows.length > 10 && (
+                      <div className="px-4 py-3 bg-amber-100 text-center text-sm text-amber-700">
+                        Showing 10 of {result.fittings.elbows.length} elbows
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Export Options */}
               <div className="pt-6 border-t border-slate-200">
-                <button className="w-full py-3 px-6 bg-slate-800 hover:bg-slate-900 text-white font-medium rounded-xl transition-colors duration-300">
-                  Export Report
+                <button 
+                  onClick={() => {
+                    // Export functionality - download as JSON
+                    const dataStr = JSON.stringify(result, null, 2)
+                    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr)
+                    const exportFileDefaultName = `analysis_${result.metadata.filename}_${new Date().getTime()}.json`
+                    const linkElement = document.createElement('a')
+                    linkElement.setAttribute('href', dataUri)
+                    linkElement.setAttribute('download', exportFileDefaultName)
+                    linkElement.click()
+                  }}
+                  className="w-full py-3 px-6 bg-slate-800 hover:bg-slate-900 text-white font-medium rounded-xl transition-colors duration-300"
+                >
+                  Export Report as JSON
                 </button>
               </div>
             </div>
