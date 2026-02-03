@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { Upload, FileText, Loader2, CheckCircle2, XCircle } from 'lucide-react'
+import { Upload, Loader2, CheckCircle2, XCircle } from 'lucide-react'
 
 interface AnalysisResult {
   area?: number
