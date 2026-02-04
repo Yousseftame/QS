@@ -10,7 +10,7 @@ interface Pipe {
 
 interface Elbow {
   diameter: number
-  angle?: number
+  count?: number
 }
 
 interface AnalysisResult {
@@ -415,7 +415,7 @@ function LandingPage() {
                           <tr>
                             <th className="px-4 py-3 text-left text-xs font-semibold text-amber-900 uppercase">#</th>
                             <th className="px-4 py-3 text-left text-xs font-semibold text-amber-900 uppercase">Diameter</th>
-                            <th className="px-4 py-3 text-left text-xs font-semibold text-amber-900 uppercase">Angle</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-amber-900 uppercase">count</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-amber-200">
@@ -423,7 +423,7 @@ function LandingPage() {
                             <tr key={idx} className="hover:bg-white transition-colors">
                               <td className="px-4 py-3 text-sm text-amber-700">{idx + 1}</td>
                               <td className="px-4 py-3 text-sm font-medium text-amber-900">{elbow.diameter}</td>
-                              <td className="px-4 py-3 text-sm text-amber-700">{elbow.angle || 'N/A'}</td>
+                              <td className="px-4 py-3 text-sm text-amber-700">{elbow.count || 'N/A'}</td>
                             </tr>
                           ))}
                         </tbody>
