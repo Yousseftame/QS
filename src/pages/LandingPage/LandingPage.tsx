@@ -42,24 +42,24 @@ function LandingPage() {
     const validExtensions = ['.dwg', '.DWG']
     const fileName = file.name.toLowerCase()
     const isValid = validExtensions.some(ext => fileName.endsWith(ext.toLowerCase()))
-    
+
     if (!isValid) {
       setError('Please upload a valid DWG file')
       return false
     }
-    
+
     if (file.size > 50 * 1024 * 1024) { // 50MB limit
       setError('File size must be less than 50MB')
       return false
     }
-    
+
     return true
   }
 
   const handleFileSelect = (selectedFile: File) => {
     setError(null)
     setResult(null)
-    
+
     if (validateFile(selectedFile)) {
       setFile(selectedFile)
     }
@@ -68,7 +68,7 @@ function LandingPage() {
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     setIsDragging(false)
-    
+
     const droppedFile = e.dataTransfer.files[0]
     if (droppedFile) {
       handleFileSelect(droppedFile)
@@ -96,7 +96,7 @@ function LandingPage() {
       formData.append('file', file)
 
       // Real API call
-      const response = await fetch('http://54.159.23.205:8001/extract', {
+      const response = await fetch('https://qs.thinkstudio.ai/api/extract', {
         method: 'POST',
         body: formData,
       })
@@ -106,7 +106,7 @@ function LandingPage() {
       }
 
       const data = await response.json()
-      
+
       // Process the API response
       const processedResult: AnalysisResult = {
         metadata: data.metadata,
@@ -115,11 +115,11 @@ function LandingPage() {
         // Compute totals for display
         totalPipes: data.pipes?.length || 0,
         totalElbows: data.fittings?.elbows?.length || 0,
-        totalFittings: (data.fittings?.elbows?.length || 0) + 
-                       (data.fittings?.tees?.length || 0) + 
-                       (data.fittings?.reducers?.length || 0)
+        totalFittings: (data.fittings?.elbows?.length || 0) +
+          (data.fittings?.tees?.length || 0) +
+          (data.fittings?.reducers?.length || 0)
       }
-      
+
       setResult(processedResult)
     } catch (err) {
       console.error('Analysis error:', err)
@@ -140,35 +140,35 @@ function LandingPage() {
       {/* Hero Section */}
       <section className="relative overflow-hidden">
 
-             {/* Top Left Logo */}
-<div className="absolute md:top-6 md:left-16 z-50  sm:top-6 sm:left-6 ">
-  <a
-    href="https://www.hassanallam.com/"
-    target="_blank"
-    rel="noopener noreferrer"
-    className="flex items-center gap-3"
-  >
-    <img
-      src={topLeftImg}
-      alt="Hassan Allam Holding"
-      className="h-30 w-auto object-contain sm:h-10
+        {/* Top Left Logo */}
+        <div className="absolute md:top-6 md:left-16 z-50  sm:top-6 sm:left-6 ">
+          <a
+            href="https://www.hassanallam.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3"
+          >
+            <img
+              src={topLeftImg}
+              alt="Hassan Allam Holding"
+              className="h-30 w-auto object-contain sm:h-10
         md:h-12
         lg:h-30
         "
-    />
-  </a>
-</div>
+            />
+          </a>
+        </div>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.1),transparent_50%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_60%,rgba(99,102,241,0.08),transparent_50%)]" />
-        
+
         <div className="relative max-w-7xl mx-auto px-6 py-20 lg:py-32">
           <div className="text-center space-y-8">
             {/* Logo */}
             <div className="flex justify-center items-center gap-3 animate-fade-in">
-            
+
               <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/30 rotate-3 hover:rotate-6 transition-transform duration-300">
                 <a href="https://thinkstudio.ai/" target="_blank" rel="noopener noreferrer">
-                <img src={logoImg} className="w-16 h-16 text-white" />
+                  <img src={logoImg} className="w-16 h-16 text-white" />
                 </a>
               </div>
             </div>
@@ -184,7 +184,7 @@ function LandingPage() {
                   Quantity Survey
                 </span>
               </h1>
-              
+
               <p className="text-xl lg:text-2xl text-slate-600 max-w-2xl mx-auto font-light">
                 Upload your DWG and get instant quantity takeoff
               </p>
@@ -220,8 +220,8 @@ function LandingPage() {
                 className={`
                   relative border-2 border-dashed rounded-2xl p-12 lg:p-16 text-center
                   transition-all duration-300 cursor-pointer group
-                  ${isDragging 
-                    ? 'border-blue-500 bg-blue-50/50 scale-[1.02]' 
+                  ${isDragging
+                    ? 'border-blue-500 bg-blue-50/50 scale-[1.02]'
                     : 'border-slate-300 hover:border-blue-400 hover:bg-slate-50/50'
                   }
                 `}
@@ -232,19 +232,19 @@ function LandingPage() {
                   onChange={(e) => e.target.files && handleFileSelect(e.target.files[0])}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 />
-                
+
                 <div className="space-y-6">
                   <div className={`
                     mx-auto w-20 h-20 rounded-2xl flex items-center justify-center
                     transition-all duration-300
-                    ${isDragging 
-                      ? 'bg-blue-600 scale-110' 
+                    ${isDragging
+                      ? 'bg-blue-600 scale-110'
                       : 'bg-gradient-to-br from-slate-100 to-slate-200 group-hover:from-blue-100 group-hover:to-indigo-100'
                     }
                   `}>
                     <Upload className={`w-10 h-10 ${isDragging ? 'text-white' : 'text-slate-600 group-hover:text-blue-600'}`} />
                   </div>
-                  
+
                   {file ? (
                     <div className="space-y-2">
                       <div className="flex items-center justify-center gap-2 text-green-600">
@@ -358,7 +358,7 @@ function LandingPage() {
                     { label: 'Elbows', value: result.totalElbows, color: 'amber', icon: '⌐' },
                     { label: 'Total Fittings', value: result.totalFittings, color: 'cyan', icon: '⊢' }
                   ].map((item, idx) => (
-                    <div 
+                    <div
                       key={idx}
                       className="p-5 bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl border border-slate-200 hover:shadow-md transition-all duration-300 hover:-translate-y-1"
                       style={{ animationDelay: `${idx * 50}ms` }}
@@ -440,11 +440,11 @@ function LandingPage() {
 
               {/* Export Options */}
               <div className="pt-6 border-t border-slate-200">
-                <button 
+                <button
                   onClick={() => {
                     // Export functionality - download as JSON
                     const dataStr = JSON.stringify(result, null, 2)
-                    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr)
+                    const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr)
                     const exportFileDefaultName = `analysis_${result.metadata.filename}_${new Date().getTime()}.json`
                     const linkElement = document.createElement('a')
                     linkElement.setAttribute('href', dataUri)
