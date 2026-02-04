@@ -28,7 +28,7 @@ interface AnalysisResult {
   // Additional computed fields for display
   totalPipes?: number
   totalElbows?: number
-  totalFittings?: number
+  // totalFittings?: number
 }
 
 function LandingPage() {
@@ -115,9 +115,9 @@ function LandingPage() {
         // Compute totals for display
         totalPipes: data.pipes?.length || 0,
         totalElbows: data.fittings?.elbows?.length || 0,
-        totalFittings: (data.fittings?.elbows?.length || 0) +
-          (data.fittings?.tees?.length || 0) +
-          (data.fittings?.reducers?.length || 0)
+        // totalFittings: (data.fittings?.elbows?.length || 0) +
+        //   (data.fittings?.tees?.length || 0) +
+        //   (data.fittings?.reducers?.length || 0)
       }
 
       setResult(processedResult)
@@ -351,12 +351,12 @@ function LandingPage() {
 
               {/* Component Counts */}
               <div>
-                <h3 className="text-lg font-semibold text-slate-800 mb-4">Component Summary</h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <h3 className="text-lg font-semibold text-slate-800 mb-4">Drawing Analysis</h3>
+                <div className="grid grid-cols-2 md:grid-cols-2 gap-4">
                   {[
-                    { label: 'Total Pipes', value: result.totalPipes, color: 'emerald', icon: '|' },
-                    { label: 'Elbows', value: result.totalElbows, color: 'amber', icon: '⌐' },
-                    { label: 'Total Fittings', value: result.totalFittings, color: 'cyan', icon: '⊢' }
+                    { label: 'Pipes Types', value: result.totalPipes, color: 'emerald', icon: '|' },
+                    { label: 'Elbows Types', value: result.totalElbows, color: 'amber', icon: '⌐' },
+                    // { label: 'Total Fittings', value: result.totalFittings, color: 'cyan', icon: '⊢' }
                   ].map((item, idx) => (
                     <div
                       key={idx}
