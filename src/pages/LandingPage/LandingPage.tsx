@@ -96,7 +96,7 @@ function LandingPage() {
       formData.append('file', file)
 
       // Real API call
-      const response = await fetch('https://qs.thinkstudio.ai/api/extract', {
+      const response = await fetch('http://54.159.23.205:8001/extract', {
         method: 'POST',
         body: formData,
       })
