@@ -385,7 +385,7 @@ function LandingPage() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200">
-                          {result.pipes.slice(0, 10).map((pipe, idx) => (
+                          {result.pipes.slice(0, 30).map((pipe, idx) => (
                             <tr key={idx} className="hover:bg-white transition-colors">
                               <td className="px-4 py-3 text-sm text-slate-600">{idx + 1}</td>
                               <td className="px-4 py-3 text-sm font-medium text-slate-900">{pipe.diameter}</td>
@@ -395,9 +395,9 @@ function LandingPage() {
                         </tbody>
                       </table>
                     </div>
-                    {result.pipes.length > 10 && (
+                    {result.pipes.length > 30 && (
                       <div className="px-4 py-3 bg-slate-100 text-center text-sm text-slate-600">
-                        Showing 10 of {result.pipes.length} pipes
+                        Showing 30 of {result.pipes.length} pipes
                       </div>
                     )}
                   </div>
@@ -419,7 +419,7 @@ function LandingPage() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-amber-200">
-                          {result.fittings.elbows.slice(0, 10).map((elbow, idx) => (
+                          {result.fittings.elbows.slice(0, 30).map((elbow, idx) => (
                             <tr key={idx} className="hover:bg-white transition-colors">
                               <td className="px-4 py-3 text-sm text-amber-700">{idx + 1}</td>
                               <td className="px-4 py-3 text-sm font-medium text-amber-900">{elbow.diameter}</td>
@@ -429,9 +429,9 @@ function LandingPage() {
                         </tbody>
                       </table>
                     </div>
-                    {result.fittings.elbows.length > 10 && (
+                    {result.fittings.elbows.length > 30 && (
                       <div className="px-4 py-3 bg-amber-100 text-center text-sm text-amber-700">
-                        Showing 10 of {result.fittings.elbows.length} elbows
+                        Showing 30 of {result.fittings.elbows.length} elbows
                       </div>
                     )}
                   </div>
