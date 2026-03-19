@@ -4,13 +4,18 @@ import logoImg from "../../assets/images-removebg-preview.png"
 import topLeftImg from "../../assets/hs-logo.png"
 
 interface Pipe {
-  diameter: number
+  diameter: number | null
+  type: string | null
   length: number
+  is_insulated: boolean
+  insulation_thickness: number | null
+  insulation_area: number | null
 }
 
-interface Elbow {
-  diameter: number
-  count?: number
+interface Fitting {
+  diameter: number | null
+  type: string | null
+  count: number
 }
 
 interface AnalysisResult {
@@ -20,14 +25,17 @@ interface AnalysisResult {
     total_arc_length: number
   }
   pipes: Pipe[]
+  itemized_pipes: Pipe[]
   fittings: {
-    elbows: Elbow[]
-    tees?: any[]
-    reducers?: any[]
+    elbows: Fitting[]
+    tees: Fitting[]
+    reducers: Fitting[]
   }
   // Additional computed fields for display
   totalPipes?: number
   totalElbows?: number
+  totalTees?: number
+  totalReducers?: number
   // totalFittings?: number
 }
 
@@ -96,7 +104,7 @@ function LandingPage() {
       formData.append('file', file)
 
       // Real API call
-      const response = await fetch('http://54.159.23.205:8001/extract', {
+      const response = await fetch('http://18.234.150.83:8001/extract', {
         method: 'POST',
         body: formData,
       })
@@ -111,13 +119,17 @@ function LandingPage() {
       const processedResult: AnalysisResult = {
         metadata: data.metadata,
         pipes: data.pipes || [],
-        fittings: data.fittings || { elbows: [] },
+        itemized_pipes: data.itemized_pipes || [],
+        fittings: {
+          elbows: data.fittings?.elbows || [],
+          tees: data.fittings?.tees || [],
+          reducers: data.fittings?.reducers || [],
+        },
         // Compute totals for display
         totalPipes: data.pipes?.length || 0,
         totalElbows: data.fittings?.elbows?.length || 0,
-        // totalFittings: (data.fittings?.elbows?.length || 0) +
-        //   (data.fittings?.tees?.length || 0) +
-        //   (data.fittings?.reducers?.length || 0)
+        totalTees: data.fittings?.tees?.length || 0,
+        totalReducers: data.fittings?.reducers?.length || 0,
       }
 
       setResult(processedResult)
@@ -352,11 +364,12 @@ function LandingPage() {
               {/* Component Counts */}
               <div>
                 <h3 className="text-lg font-semibold text-slate-800 mb-4">Drawing Analysis</h3>
-                <div className="grid grid-cols-2 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {[
                     { label: 'Pipes Types', value: result.totalPipes, color: 'emerald', icon: '|' },
                     { label: 'Elbows Types', value: result.totalElbows, color: 'amber', icon: '⌐' },
-                    // { label: 'Total Fittings', value: result.totalFittings, color: 'cyan', icon: '⊢' }
+                    { label: 'Tees Types', value: result.totalTees, color: 'cyan', icon: '⊢' },
+                    { label: 'Reducers Types', value: result.totalReducers, color: 'rose', icon: '◿' }
                   ].map((item, idx) => (
                     <div
                       key={idx}
@@ -371,38 +384,113 @@ function LandingPage() {
               </div>
 
               {/* Detailed Pipes List */}
-              {result.pipes.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-800 mb-4">Pipe Details</h3>
-                  <div className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
-                    <div className="max-h-64 overflow-y-auto">
-                      <table className="w-full">
-                        <thead className="bg-slate-100 sticky top-0">
-                          <tr>
-                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">#</th>
-                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Diameter</th>
-                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Length</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-200">
-                          {result.pipes.slice(0, 30).map((pipe, idx) => (
-                            <tr key={idx} className="hover:bg-white transition-colors">
-                              <td className="px-4 py-3 text-sm text-slate-600">{idx + 1}</td>
-                              <td className="px-4 py-3 text-sm font-medium text-slate-900">{pipe.diameter}</td>
-                              <td className="px-4 py-3 text-sm text-slate-700">{pipe.length.toFixed(4)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+              {result.pipes.length > 0 && (() => {
+                // Group pipes by type
+                const typeColors: Record<string, { bg: string; text: string; border: string; dot: string }> = {
+                  CWP: { bg: 'bg-blue-50', text: 'text-blue-800', border: 'border-blue-200', dot: 'bg-blue-500' },
+                  HWP: { bg: 'bg-orange-50', text: 'text-orange-800', border: 'border-orange-200', dot: 'bg-orange-500' },
+                  SAN: { bg: 'bg-green-50', text: 'text-green-800', border: 'border-green-200', dot: 'bg-green-500' },
+                  FP: { bg: 'bg-red-50', text: 'text-red-800', border: 'border-red-200', dot: 'bg-red-500' },
+                  GAS: { bg: 'bg-yellow-50', text: 'text-yellow-800', border: 'border-yellow-200', dot: 'bg-yellow-500' },
+                  AC: { bg: 'bg-cyan-50', text: 'text-cyan-800', border: 'border-cyan-200', dot: 'bg-cyan-500' },
+                }
+                const defaultColor = { bg: 'bg-slate-50', text: 'text-slate-700', border: 'border-slate-200', dot: 'bg-slate-400' }
+
+                const grouped: Record<string, Pipe[]> = {}
+                for (const pipe of result.pipes) {
+                  const key = pipe.type ?? 'Unknown'
+                  if (!grouped[key]) grouped[key] = []
+                  grouped[key].push(pipe)
+                }
+                const sortedTypes = Object.keys(grouped).sort()
+
+                return (
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold text-slate-800">Pipe Schedule</h3>
+                      <span className="text-xs font-medium text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
+                        {result.pipes.length} entries · {sortedTypes.length} types
+                      </span>
                     </div>
-                    {result.pipes.length > 30 && (
-                      <div className="px-4 py-3 bg-slate-100 text-center text-sm text-slate-600">
-                        Showing 30 of {result.pipes.length} pipes
-                      </div>
-                    )}
+
+                    <div className="space-y-4">
+                      {sortedTypes.map((typeName) => {
+                        const pipes = grouped[typeName].sort((a, b) => (a.diameter ?? 0) - (b.diameter ?? 0))
+                        const color = typeColors[typeName] ?? defaultColor
+                        const totalLength = pipes.reduce((sum, p) => sum + p.length, 0)
+                        const hasInsulation = pipes.some(p => p.is_insulated)
+
+                        return (
+                          <div key={typeName} className={`rounded-xl border ${color.border} overflow-hidden`}>
+                            {/* Group Header */}
+                            <div className={`flex items-center justify-between px-4 py-3 ${color.bg}`}>
+                              <div className="flex items-center gap-2">
+                                <span className={`inline-block w-2.5 h-2.5 rounded-full ${color.dot}`} />
+                                <span className={`text-sm font-bold tracking-wide ${color.text}`}>{typeName}</span>
+                                {hasInsulation && (
+                                  <span className="text-[10px] font-semibold bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full ml-1">
+                                    INSULATED
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-4 text-xs text-slate-500">
+                                <span>{pipes.length} DN sizes</span>
+                                <span className="font-semibold text-slate-700">{(totalLength / 1000).toFixed(2)} m total</span>
+                              </div>
+                            </div>
+
+                            {/* Pipe rows */}
+                            <div className="divide-y divide-slate-100 bg-white">
+                              {pipes.map((pipe, idx) => (
+                                <div key={idx} className="flex items-center px-4 py-2.5 hover:bg-slate-50 transition-colors group">
+                                  {/* Diameter chip */}
+                                  <div className="w-24 flex-shrink-0">
+                                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${color.bg} ${color.text} border ${color.border}`}>
+                                      <span className="opacity-60 font-normal">DN</span>
+                                      {pipe.diameter ?? '—'}
+                                    </span>
+                                  </div>
+
+                                  {/* Length bar */}
+                                  <div className="flex-1 mx-4">
+                                    <div className="flex items-center gap-2">
+                                      <div className="flex-1 bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                                        <div
+                                          className={`h-full rounded-full ${color.dot} opacity-60`}
+                                          style={{ width: `${Math.min(100, (pipe.length / (Math.max(...pipes.map(p => p.length)) || 1)) * 100)}%` }}
+                                        />
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Length value */}
+                                  <div className="w-32 text-right">
+                                    <span className="text-sm font-semibold text-slate-800">
+                                      {(pipe.length / 1000).toFixed(3)}
+                                    </span>
+                                    <span className="text-xs text-slate-400 ml-1">m</span>
+                                  </div>
+
+                                  {/* Insulation badge */}
+                                  <div className="w-28 text-right ml-2">
+                                    {pipe.is_insulated ? (
+                                      <span className="text-[10px] font-medium text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full">
+                                        {pipe.insulation_thickness ? `${pipe.insulation_thickness}mm ins.` : 'Insulated'}
+                                      </span>
+                                    ) : (
+                                      <span className="text-[10px] text-slate-300">—</span>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
                   </div>
-                </div>
-              )}
+                )
+              })()}
 
               {/* Detailed Elbows List */}
               {result.fittings.elbows.length > 0 && (
@@ -423,7 +511,7 @@ function LandingPage() {
                             <tr key={idx} className="hover:bg-white transition-colors">
                               <td className="px-4 py-3 text-sm text-amber-700">{idx + 1}</td>
                               <td className="px-4 py-3 text-sm font-medium text-amber-900">{elbow.diameter}</td>
-                              <td className="px-4 py-3 text-sm text-amber-700">{elbow.count || 'N/A'}</td>
+                              <td className="px-4 py-3 text-sm text-amber-700">{elbow.count}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -432,6 +520,74 @@ function LandingPage() {
                     {result.fittings.elbows.length > 30 && (
                       <div className="px-4 py-3 bg-amber-100 text-center text-sm text-amber-700">
                         Showing 30 of {result.fittings.elbows.length} elbows
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Detailed Tee Fittings List */}
+              {result.fittings.tees.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4">Tee Fittings</h3>
+                  <div className="bg-cyan-50 rounded-xl border border-cyan-200 overflow-hidden">
+                    <div className="max-h-64 overflow-y-auto">
+                      <table className="w-full">
+                        <thead className="bg-cyan-100 sticky top-0">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-cyan-900 uppercase">#</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-cyan-900 uppercase">Diameter</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-cyan-900 uppercase">Count</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-cyan-200">
+                          {result.fittings.tees.slice(0, 30).map((tee, idx) => (
+                            <tr key={idx} className="hover:bg-white transition-colors">
+                              <td className="px-4 py-3 text-sm text-cyan-700">{idx + 1}</td>
+                              <td className="px-4 py-3 text-sm font-medium text-cyan-900">{tee.diameter}</td>
+                              <td className="px-4 py-3 text-sm text-cyan-700">{tee.count}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {result.fittings.tees.length > 30 && (
+                      <div className="px-4 py-3 bg-cyan-100 text-center text-sm text-cyan-700">
+                        Showing 30 of {result.fittings.tees.length} tees
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Detailed Reducer Fittings List */}
+              {result.fittings.reducers.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4">Reducer Fittings</h3>
+                  <div className="bg-rose-50 rounded-xl border border-rose-200 overflow-hidden">
+                    <div className="max-h-64 overflow-y-auto">
+                      <table className="w-full">
+                        <thead className="bg-rose-100 sticky top-0">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-rose-900 uppercase">#</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-rose-900 uppercase">Diameter</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-rose-900 uppercase">Count</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-rose-200">
+                          {result.fittings.reducers.slice(0, 30).map((reducer, idx) => (
+                            <tr key={idx} className="hover:bg-white transition-colors">
+                              <td className="px-4 py-3 text-sm text-rose-700">{idx + 1}</td>
+                              <td className="px-4 py-3 text-sm font-medium text-rose-900">{reducer.diameter}</td>
+                              <td className="px-4 py-3 text-sm text-rose-700">{reducer.count}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {result.fittings.reducers.length > 30 && (
+                      <div className="px-4 py-3 bg-rose-100 text-center text-sm text-rose-700">
+                        Showing 30 of {result.fittings.reducers.length} reducers
                       </div>
                     )}
                   </div>
