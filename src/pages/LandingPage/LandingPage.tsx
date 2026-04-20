@@ -39,11 +39,63 @@ interface AnalysisResult {
   // totalFittings?: number
 }
 
+interface NewAnalysisResult {
+  job_id: string;
+  summary: {
+    file_info: {
+      filename: string;
+      base_filename: string;
+      output_directory: string;
+    };
+    run_statistics: {
+      total_runs: number;
+      text_labeled_runs: number;
+      mapped_runs: number;
+      unmapped_runs: number;
+      text_labeled_percentage: string;
+      mapped_percentage: string;
+      unmapped_percentage: string;
+    };
+    diameter_summary: Record<string, {
+      count: number;
+      total_length: number;
+      from_text: number;
+      from_geometry: number;
+    }>;
+    fitting_summary: {
+      pipe_fittings: Record<string, {
+        count: number;
+        by_size: Record<string, number>;
+      }>;
+      equipment_and_valves: Record<string, {
+        count: number;
+        by_size: Record<string, number>;
+      }>;
+      totals: {
+        pipe_fittings: number;
+        equipment_and_valves: number;
+        all_detected: number;
+      };
+    };
+    mapping_details: Array<{
+      run_id: string;
+      source: string;
+      final_dia: string | number;
+      length: number;
+      segments: number;
+      debug?: Record<string, any>;
+    }>;
+  };
+}
+
 function LandingPage() {
   const [file, setFile] = useState<File | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [isAnalyzingNew, setIsAnalyzingNew] = useState(false)
   const [result, setResult] = useState<AnalysisResult | null>(null)
+  const [newResult, setNewResult] = useState<NewAnalysisResult | null>(null)
+  const [visualizeUrl, setVisualizeUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const validateFile = (file: File): boolean => {
@@ -67,6 +119,8 @@ function LandingPage() {
   const handleFileSelect = (selectedFile: File) => {
     setError(null)
     setResult(null)
+    setNewResult(null)
+    setVisualizeUrl(null)
 
     if (validateFile(selectedFile)) {
       setFile(selectedFile)
@@ -109,6 +163,11 @@ function LandingPage() {
         body: formData,
       })
 
+      // await fetch('http://18.234.150.83:8001/extract', {
+      //   method: 'POST',
+      //   body: formData,
+      // })
+
       if (!response.ok) {
         throw new Error(`API Error: ${response.status}`)
       }
@@ -141,9 +200,65 @@ function LandingPage() {
     }
   }
 
+  const handleAnalyzeNew = async () => {
+    if (!file) return
+
+    setIsAnalyzingNew(true)
+    setError(null)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const response = await fetch('http://18.234.150.83:8001/drawings/process', {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+        },
+        body: formData,
+      })
+
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`)
+      }
+
+      const data = await response.json()
+      setNewResult(data)
+
+      // Fetch visualize payload
+      if (data.job_id) {
+        try {
+          const visResponse = await fetch(`http://18.234.150.83:8001/drawings/${data.job_id}/visualize`, {
+            method: 'GET',
+            headers: {
+              'accept': 'application/json',
+            },
+          })
+          if (visResponse.ok) {
+            const blob = await visResponse.blob()
+            const url = URL.createObjectURL(blob)
+            setVisualizeUrl(url)
+          } else {
+            console.warn('Visualize endpoint returned error:', visResponse.status)
+          }
+        } catch (visErr) {
+          console.error('Failed to fetch visualize file', visErr)
+        }
+      }
+
+    } catch (err) {
+      console.error('Analysis error:', err)
+      setError(err instanceof Error ? err.message : 'Failed to analyze file. Please try again.')
+    } finally {
+      setIsAnalyzingNew(false)
+    }
+  }
+
   const resetUpload = () => {
     setFile(null)
     setResult(null)
+    setNewResult(null)
+    setVisualizeUrl(null)
     setError(null)
   }
 
@@ -222,7 +337,7 @@ function LandingPage() {
       {/* Upload Section */}
       <section className="relative max-w-4xl mx-auto px-6 pb-20">
         <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 p-8 lg:p-12 border border-slate-100">
-          {!result ? (
+          {!result && !newResult ? (
             <div className="space-y-6">
               {/* Upload Area */}
               <div
@@ -288,30 +403,54 @@ function LandingPage() {
                 </div>
               )}
 
-              {/* Analyze Button */}
-              <button
-                onClick={handleAnalyze}
-                disabled={!file || isAnalyzing}
-                className={`
-                  w-full py-4 px-6 rounded-xl font-semibold text-white
-                  transition-all duration-300 transform
-                  ${file && !isAnalyzing
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/30 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]'
-                    : 'bg-slate-300 cursor-not-allowed'
-                  }
-                `}
-              >
-                {isAnalyzing ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Analyzing Drawing...
-                  </span>
-                ) : (
-                  'Analyze DWG File'
-                )}
-              </button>
+              {/* Analyze Buttons */}
+              <div className="flex flex-col sm:flex-row gap-4">
+                <button
+                  onClick={handleAnalyze}
+                  disabled={!file || isAnalyzing || isAnalyzingNew}
+                  className={`
+                    flex-1 py-4 px-6 rounded-xl font-semibold text-white
+                    transition-all duration-300 transform
+                    ${file && !isAnalyzing && !isAnalyzingNew
+                      ? 'bg-gradient-to-r from-slate-500 to-slate-600 hover:from-slate-600 hover:to-slate-700 shadow-lg shadow-slate-500/30 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]'
+                      : 'bg-slate-300 cursor-not-allowed'
+                    }
+                  `}
+                >
+                  {isAnalyzing ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Analyzing (V1)...
+                    </span>
+                  ) : (
+                    'Analyze DWG (Old)'
+                  )}
+                </button>
+
+                <button
+                  onClick={handleAnalyzeNew}
+                  disabled={!file || isAnalyzing || isAnalyzingNew}
+                  className={`
+                    flex-1 py-4 px-6 rounded-xl font-semibold text-white
+                    transition-all duration-300 transform
+                    ${file && !isAnalyzing && !isAnalyzingNew
+                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/30 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]'
+                      : 'bg-slate-300 cursor-not-allowed'
+                    }
+                  `}
+                >
+                  {isAnalyzingNew ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Processing...
+                    </span>
+                  ) : (
+                    'Analyze DWG File (New)'
+                  )}
+                </button>
+              </div>
             </div>
-          ) : (
+          ) : result ? (
             /* Results Section */
             <div className="space-y-8 animate-fade-in">
               {/* Header */}
@@ -613,7 +752,186 @@ function LandingPage() {
                 </button>
               </div>
             </div>
-          )}
+          ) : newResult ? (
+            /* New Results Section */
+            <div className="space-y-8 animate-fade-in">
+              {/* Header */}
+              <div className="flex items-center justify-between pb-6 border-b border-slate-200">
+                <div>
+                  <h2 className="text-2xl font-bold text-slate-800">Analysis Complete (V2)</h2>
+                  <p className="text-sm text-slate-500 mt-1">{newResult.summary.file_info.filename}</p>
+                </div>
+                <button
+                  onClick={resetUpload}
+                  className="px-4 py-2 text-sm font-medium text-slate-700 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-colors"
+                >
+                  Upload New File
+                </button>
+              </div>
+
+              {/* Main Metrics */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="group p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-100 hover:shadow-lg transition-all duration-300">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-blue-700 mb-1">Total Pipe Runs</p>
+                      <p className="text-3xl font-bold text-blue-900">{newResult.summary.run_statistics.total_runs}</p>
+                      <p className="text-sm text-blue-600 mt-1 mb-3">segments</p>
+                      {/* <div className="flex flex-wrap gap-2">
+                        <span className="text-xs font-semibold text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-md">Mapped: {newResult.summary.run_statistics.mapped_percentage}</span>
+                        <span className="text-xs font-semibold text-rose-700 bg-rose-100 px-2.5 py-1 rounded-md">Unmapped: {newResult.summary.run_statistics.unmapped_percentage}</span>
+                      </div> */}
+                    </div>
+                    <div className="w-14 h-14 bg-blue-600/10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <svg className="w-7 h-7 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="group p-6 bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl border border-purple-100 hover:shadow-lg transition-all duration-300">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-purple-700 mb-1">Total Fittings &amp; Equipment</p>
+                      <p className="text-3xl font-bold text-purple-900">{newResult.summary.fitting_summary.totals.all_detected}</p>
+                      <p className="text-sm text-purple-600 mt-1">items</p>
+                    </div>
+                    <div className="w-14 h-14 bg-purple-600/10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <svg className="w-7 h-7 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Diameter Summary */}
+              <div>
+                <h3 className="text-lg font-semibold text-slate-800 mb-4">Diameter Summary</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {Object.entries(newResult.summary.diameter_summary || {}).map(([dia, data]) => (
+                    <div key={dia} className="p-5 bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl border border-slate-200 hover:shadow-md transition-all duration-300">
+                      <p className="text-sm font-bold text-slate-800 mb-2">{dia}</p>
+                      <div className="flex justify-between text-xs text-slate-600">
+                        <span>Count:</span>
+                        <span className="font-semibold">{data.count}</span>
+                      </div>
+                      <div className="flex justify-between text-xs text-slate-600 mt-1">
+                        <span>Length:</span>
+                        <span className="font-semibold">{(data.total_length / 1000).toFixed(2)} m</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Fittings Summary */}
+              <div>
+                <h3 className="text-lg font-semibold text-slate-800 mb-4">Pipe Fittings</h3>
+                <div className="bg-amber-50 rounded-xl border border-amber-200 overflow-hidden">
+                  <table className="w-full">
+                    <thead className="bg-amber-100">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-amber-900 uppercase">Type</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-amber-900 uppercase">Count</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-amber-200">
+                      {Object.entries(newResult.summary.fitting_summary.pipe_fittings || {}).map(([type, data]) => (
+                        <tr key={type} className="hover:bg-white transition-colors">
+                          <td className="px-4 py-3 text-sm font-medium text-amber-900">{type}</td>
+                          <td className="px-4 py-3 text-sm text-amber-700">{data.count}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Mapping Details
+              {(newResult.summary.mapping_details && newResult.summary.mapping_details.length > 0) && (
+                <details className="group">
+                  <summary className="text-lg font-semibold text-slate-800 mb-4 cursor-pointer list-none flex items-center gap-2 select-none hover:text-blue-600 transition-colors">
+                    <svg className="w-5 h-5 text-slate-400 group-hover:text-blue-500 transition-transform duration-200 group-open:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                    View Run Details
+                  </summary>
+                  <div className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
+                    <div className="max-h-80 overflow-y-auto">
+                      <table className="w-full">
+                        <thead className="bg-slate-100 sticky top-0 shadow-sm">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Run ID</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Source</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Dia</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Length</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Segments</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200">
+                          {newResult.summary.mapping_details.map((run, idx) => (
+                            <tr key={idx} className="hover:bg-white transition-colors">
+                              <td className="px-4 py-3 text-sm font-medium text-slate-900">{run.run_id}</td>
+                              <td className="px-4 py-3 text-sm">
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                                  run.source === 'unmapped' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
+                                }`}>
+                                  {run.source}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-sm text-slate-600 font-semibold">{run.final_dia}</td>
+                              <td className="px-4 py-3 text-sm text-slate-600">{run.length ? (run.length / 1000).toFixed(2) : '0.00'} m</td>
+                              <td className="px-4 py-3 text-sm text-slate-600">{run.segments}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </details>
+              )} */}
+
+              {/* Visualization */}
+              {visualizeUrl && (
+                <div className="pt-6 border-t border-slate-200 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold text-slate-800">Drawing Visualization</h3>
+                    <a
+                      href={visualizeUrl}
+                      download={`visualization_${newResult.job_id}`}
+                      className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors flex items-center gap-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                      Download File
+                    </a>
+                  </div>
+                  <div className="w-full bg-slate-50 border border-slate-200 rounded-xl overflow-hidden flex items-center justify-center p-4">
+                    <iframe src={visualizeUrl} title="Drawing visualization" className="w-full h-[600px] border-0 rounded-lg" />
+                  </div>
+                </div>
+              )}
+
+              {/* Export Options */}
+              <div className="pt-6 border-t border-slate-200">
+                <button
+                  onClick={() => {
+                    const dataStr = JSON.stringify(newResult, null, 2)
+                    const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr)
+                    const exportFileDefaultName = `analysis_v2_${newResult.summary.file_info.filename}_${new Date().getTime()}.json`
+                    const linkElement = document.createElement('a')
+                    linkElement.setAttribute('href', dataUri)
+                    linkElement.setAttribute('download', exportFileDefaultName)
+                    linkElement.click()
+                  }}
+                  className="w-full py-3 px-6 bg-slate-800 hover:bg-slate-900 text-white font-medium rounded-xl transition-colors duration-300"
+                >
+                  Export V2 Report as JSON
+                </button>
+              </div>
+            </div>
+          ) : null}
         </div>
       </section>
     </div>
